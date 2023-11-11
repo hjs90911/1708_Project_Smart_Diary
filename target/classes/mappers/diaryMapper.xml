@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 일정 처리 SQL -->
+<mapper namespace="com.diary.smart.dao.DiaryMapper">
+
+	<!-- 일정 정보 저장 -->
+	<insert id="insertDiary" parameterType="Diary">
+		<selectKey keyProperty="sc_no_pk" resultType="int" order="BEFORE">
+			select
+				seq_id_sc_tb_sc_no_pk.nextval
+			from
+				dual
+		</selectKey>
+		insert into
+			ID_SC_TB(
+				sc_no_pk
+				,user_no_fk
+				,sc_stdt
+				,sc_con
+				,sc_wt
+			<if test="sc_fin != null">
+				,sc_fin
+			</if>
+			)
+			values(
+				#{sc_no_pk}
+				,#{user_no_fk}
+				,#{sc_stdt}
+				,#{sc_con}
+				,#{sc_wt}
+			<if test="sc_fin != null">
+				,#{sc_fin}
+			</if>
+			)
+	</insert>
+
+	<!-- 일정 삭제 -->
+	<!-- 실제 삭제가아닌 수정으로 삭제플래그만 수정!!!! -->
+	<update id="deleteDiary" parameterType="int">
+		update
+			ID_SC_TB
+		set
+			sc_dflag = 'N'
+		where
+			sc_no_pk = #{sc_no_pk}
+	</update>
+
+
+	<!-- 일정 수정 -->
+	<update id="updateDiary" parameterType="Diary">
+		update
+			ID_SC_TB
+		set
+			sc_stdt = #{sc_stdt}
+			,sc_endt = #{sc_endt}
+			,sc_con = #{sc_con}
+			,sc_updt = #{sc_updt}
+		where
+			sc_no_pk = #{sc_no_pk}
+	</update>
+	
+	<!-- 최근 일정의 일정번호 -->
+	<select id="lastSchedule" resultType="Int">
+		select
+			sc_no_pk
+		from
+			ID_SC_TB 
+		where 
+		rownum = 1
+		order by
+			sc_no_pk desc 
+	</select>
+	
+	<!-- 결제된 일정 표시 -->
+	<update id="paymentFin" parameterType="Int">
+		update
+			ID_SC_TB
+		set
+			sc_fin = 'Y'
+		where
+			sc_no_pk = #{sc_no_pk}
+	</update>
+
+	<!-- 일자별 리스트 조회 -->
+ 	<select id="todaySchedule" resultType="Diary">
+ 		select sc_no_pk 
+ 		,to_char(sc_stdt, 'YYYY-MM-DD') as sc_stdt
+		,to_char(sc_endt, 'YYYY-MM-DD') as sc_endt
+ 		,substr(sc_con, 1, 15) as sc_con 
+		from
+			ID_SC_TB 
+		where 
+			user_no_fk = #{0}
+		and 
+			sc_stdt = #{1} 
+ 	</select>
+	
+	<!-- 해당 회원 일정 리스트 전체 조회 -->
+	<select id="selectDiaryList" parameterType="Int" resultType="HashMap">
+		select
+			sc_no_pk
+			,user_no_fk
+			,to_char(sc_stdt, 'YYYY-MM-DD') as sc_stdt
+			,to_char(sc_endt, 'YYYY-MM-DD') as sc_endt
+			,sc_con
+			,sc_fin
+			,sc_dflag
+		from
+			ID_SC_TB
+		where
+			user_no_fk = #{user_no_fk}
+		union
+		select
+			sc_no_pk
+			,user_no_fk
+			,to_char(sc_stdt, 'YYYY-MM-DD') as sc_stdt
+			,to_char(sc_endt, 'YYYY-MM-DD') as sc_endt
+			,sc_con
+			,(select 'N' from dual)
+			,sc_dflag
+		from
+			ID_SC_TB
+			,(select
+				sc_no_fk
+			from
+				ID_SCFRNO_TB
+			where
+				sc_frno = #{user_no_fk}
+			)
+		where
+			sc_no_pk = sc_no_fk
+		order by
+			sc_stdt
+	</select>
+	
+	<!-- 단일 일정 내용 조회 -->
+	<select id="selectSchedule" parameterType="Int" resultType="Diary">
+	select
+		sc_no_pk
+		,user_no_fk
+		,to_char(sc_stdt, 'YYYY-MM-DD') as sc_stdt
+		,to_char(sc_endt, 'YYYY-MM-DD') as sc_endt
+		,sc_con
+		,sc_fin
+		,sc_insdt
+		,
+		CASE
+			WHEN sc_wt='SU' THEN 'SUNNY'
+			WHEN sc_wt='CL' THEN 'CLOUDED'
+			WHEN sc_wt='RA' THEN 'RAINY'
+			WHEN sc_wt='SN' THEN 'SNOWY'
+			WHEN sc_wt='DU' THEN 'FINE_DUST'
+		END AS sc_wt
+		from
+			ID_SC_TB
+		where
+			user_no_fk = #{0}
+		and
+			sc_stdt = #{1}
+	</select>
+
+	<!-- 동행 친구 등록 -->
+	<insert id="insertCompanions">
+		insert into
+			ID_SCFRNO_TB
+		values ( 
+	    	#{0}
+	    	,#{1}
+	    	,#{2}
+		)
+	</insert>
+	
+	<!-- 동행 친구 검색 -->
+	<select id="selectCompanions" parameterType="int" resultType="String">
+		select
+			user_nm
+		from
+			ID_USER_TB
+      	,(select
+			sc_frno
+		from
+			ID_SCFRNO_TB
+		where
+			sc_no_fk = #{sc_no_pk}
+		)
+		where
+			user_no_pk = sc_frno
+	</select>
+	
+
+</mapper> 
