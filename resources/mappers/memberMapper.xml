@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 회원정보 처리 SQL -->
+<mapper namespace="com.diary.smart.dao.MemberMapper">
+
+	<!-- 회원 정보 저장 -->
+	<insert id="joinMember" parameterType="Member">
+		insert into
+			ID_USER_TB(
+				user_no_pk
+				,user_id
+				,user_pw
+				,user_nm
+				,user_birth
+				,user_phone
+				,user_add1
+			)
+			values(
+				SEQ_ID_USER_TB_user_no_pk.nextval
+				,#{user_id}
+				,#{user_pw}
+				,#{user_nm}
+				,#{user_birth}
+				,#{user_phone}
+				,#{user_add1}
+			)
+	</insert>
+
+	<!-- 회원 정보 수정 -->
+	<update id="updateMember" parameterType="Member">
+		update
+			ID_USER_TB
+		set
+			user_pw = #{user_pw}
+			,user_nm = #{user_nm}
+			,user_phone = #{user_phone}
+		<if test="user_mvseat != null">
+			,user_mvseat = #{user_mvseat}
+		</if>
+			,user_add1 = #{user_add1}
+		<if test="user_add2 != null">
+			,user_add2 = #{user_add2}
+		</if>
+		<if test="user_add3 != null">
+			,user_add3 = #{user_add3}
+		</if>
+		where
+			user_id = #{user_id}
+	</update>
+
+
+	<!-- 회원 탈퇴 -->
+	<!-- 진짜 삭제가아니라 탈퇴플래그 수정만해주는거임!!!!! -->
+	<update id="deleteMember" parameterType="int">
+		update
+			ID_USER_TB
+		set
+			user_dflag = 'Y'
+		where
+			user_no_pk = #{user_no_pk}
+	</update>
+	
+	<select id="getFriendList" parameterType="int" resultType="HashMap">
+		select
+			user_no_pk
+			,user_id
+			,user_nm
+			,user_birth
+	      	,user_frno
+	      	,fr_flag
+		from
+			id_user_tb
+			,(select
+				user_no_fk
+				,user_frno
+				,fr_flag
+			from
+				id_userfrno_tb
+			where
+				user_no_fk = #{user_no_pk}
+			and
+				fr_flag = 'Y'
+			)
+		where
+			user_no_pk = user_frno
+	</select>
+	
+	<select id="getFriendRequestList" parameterType="int" resultType="HashMap">
+		select
+			user_no_pk
+			,user_id
+			,user_nm
+		from
+			id_user_tb
+			,(select
+				user_no_fk
+				,user_frno
+				,fr_flag
+			from
+				id_userfrno_tb
+			where
+				user_frno = #{user_no_pk}
+			and
+				fr_flag = 'N'
+			)
+		where
+			user_no_pk = user_no_fk
+	</select>
+
+	<!-- 전체 회원 조회(친구 목록에 사용) -->
+	<select id="selectMemberList" parameterType="map" resultType="HashMap">
+		select 
+			user_no_pk
+			,user_id
+			,user_nm
+			,user_birth
+			,user_frno
+			,fr_flag
+		from 
+	      	(select
+	      		u.user_no_pk
+		      	,u.user_id
+		      	,u.user_nm
+		      	,u.user_birth
+		      	,f.user_frno
+		      	,f.fr_flag
+	      	from
+				(select
+			    	* 
+			    from
+			    	id_user_tb
+			    where
+			    	user_no_pk != #{user_no_pk}) u
+				,(select
+			      	*
+				from
+					id_userfrno_tb
+				where user_no_fk = #{user_no_pk}) f
+			where
+				u.user_no_pk = f.user_frno(+))
+		  <if test="nm != null">
+			where 
+				user_nm like '%' || #{nm} || '%'
+	      </if>
+		order by
+	      	user_frno, user_nm asc
+	</select>
+
+	<!-- 단일 회원 조회(id중복조회나 등등에 사용) -->
+	<select id="selectMember" parameterType="String" resultType="Member">
+		select
+			user_no_pk
+			,user_aflag
+			,user_id
+			,user_pw
+			,user_nm
+			,user_birth
+			,user_phone
+			,user_mvseat
+			,user_jodt
+			,user_dflag
+			,user_add1
+			,user_add2
+			,user_add3
+			,user_ddt
+		from
+			ID_USER_TB
+		where
+			user_id = #{id}
+	</select>
+
+	<!-- 인증된 회원 flag 변경 -->
+	<update id="authenticated" parameterType="String">
+		update
+			ID_USER_TB
+		set
+			user_aflag = 1
+		where
+			user_id = #{user_id}
+	</update>
+
+	<!-- 친구 id로 검색 후 저장 -->
+	<insert id="addFriend">
+		insert into
+			ID_USERFRNO_TB(
+				user_no_fk
+				,user_frno
+			)
+			values(
+				#{0}
+				,#{1}
+			)
+	</insert>
+	
+	<insert id="acceptFriend">
+		update
+			ID_USERFRNO_TB
+		set
+			fr_flag = 'Y'
+		where
+			user_no_fk = #{1}
+		and
+			user_frno = #{0}
+	</insert>
+	
+	<insert id="rejectFriend">
+		delete
+			ID_USERFRNO_TB
+		where
+			user_no_fk = #{1}
+		and
+			user_frno = #{0}
+	</insert>
+	
+	<delete id="deleteFriend">
+		delete
+			ID_USERFRNO_TB
+		where
+			user_no_fk = #{0}
+		and
+			user_frno = #{1}
+	</delete>
+
+</mapper> 
