@@ -1,0 +1,5 @@
+chrome.zip 파일은 C:\ 경로에 압축을 풀어야 합니다.
+
+즉 C:\chrome\chromedriver.exe 
+
+이런 경로로 크롬드라이버가 위치해야합니다.
